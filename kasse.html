@@ -178,9 +178,9 @@
         // Funktion für Pfandrückgabe
         function returnPfand(type) {
             if (type === 'krug') {
-                cart.push({ name: 'Pfandrückgabe Krug', price: -P_KRUG, type: 'krug', pfand: -P_KRUG });
+                cart.push({ name: 'Pfandrückgabe Krug', price: -P_KRUG, type: 'krug', pfand: -P_KRUG, isPfandReturn: true });
             } else if (type === 'flasche') {
-                cart.push({ name: 'Pfandrückgabe Flasche', price: -P_FLASCHE, type: 'flasche', pfand: -P_FLASCHE });
+                cart.push({ name: 'Pfandrückgabe Flasche', price: -P_FLASCHE, type: 'flasche', pfand: -P_FLASCHE, isPfandReturn: true });
             }
             updateCart();
         }
@@ -200,47 +200,66 @@
             let pfandSum = 0;
             let pfandMarken = 0;
 
-            // Zähle gleiche Artikel zusammen
-            const groupedItems = {};
+            const groupedDrinks = {};
+            const pfandReturns = [];
+            
             cart.forEach(item => {
-                const key = `${item.name}-${item.price}`;
-                if (!groupedItems[key]) {
-                    groupedItems[key] = { ...item, count: 0, totalPfand: 0 };
-                }
-                groupedItems[key].count++;
-                groupedItems[key].totalPfand += item.pfand;
-                
-                subtotal += item.price;
-                if (item.pfand) {
-                    pfandSum += item.pfand;
-                }
-                
-                // Pfandmarken zählen
-                if (item.pfand > 0) {
-                    pfandMarken++;
-                } else if (item.pfand < 0) {
-                    pfandMarken--;
+                if (item.isPfandReturn) {
+                    pfandReturns.push(item);
+                } else {
+                    const key = `${item.name}-${item.price}`;
+                    if (!groupedDrinks[key]) {
+                        groupedDrinks[key] = { ...item, count: 0 };
+                    }
+                    groupedDrinks[key].count++;
                 }
             });
-
-            // Erstelle die Anzeige für die gruppierten Artikel
-            for (const key in groupedItems) {
-                const item = groupedItems[key];
+            
+            // Anzeige der Getränke
+            for (const key in groupedDrinks) {
+                const item = groupedDrinks[key];
                 const li = document.createElement('li');
                 li.classList.add('flex', 'justify-between', 'items-center', 'text-gray-700', 'text-sm');
                 
-                const itemName = item.count > 1 ? `${item.name} (x${item.count})` : item.name;
-                const totalItemPrice = (item.price * item.count) + item.totalPfand;
+                const totalItemPrice = (item.price * item.count);
                 
                 li.innerHTML = `
-                    <span>${itemName}</span>
+                    <span>${item.count > 1 ? `${item.name} (x${item.count})` : item.name}</span>
                     <div class="flex items-center space-x-2">
                         <span class="font-medium">${totalItemPrice.toFixed(2).replace('.', ',')} €</span>
                         <button class="text-red-500 hover:text-red-700 font-bold text-lg" onclick="removeItem('${item.name}')">×</button>
                     </div>
                 `;
                 cartList.appendChild(li);
+                
+                subtotal += totalItemPrice;
+                if (item.pfand) {
+                    pfandSum += item.pfand * item.count;
+                }
+                if (item.pfand > 0) {
+                    pfandMarken += item.count;
+                }
             }
+
+            // Anzeige der Pfandrückgaben
+            pfandReturns.forEach(item => {
+                const li = document.createElement('li');
+                li.classList.add('flex', 'justify-between', 'items-center', 'text-gray-700', 'text-sm');
+                
+                li.innerHTML = `
+                    <span>${item.name}</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-medium">${item.price.toFixed(2).replace('.', ',')} €</span>
+                        <button class="text-red-500 hover:text-red-700 font-bold text-lg" onclick="removeItem('${item.name}')">×</button>
+                    </div>
+                `;
+                cartList.appendChild(li);
+
+                pfandSum += item.pfand;
+                if (item.pfand < 0) {
+                    pfandMarken--;
+                }
+            });
             
             // Gesamtbetrag berechnen
             const total = subtotal + pfandSum;
