@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Getränkestand Kasse</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+        .drink-button {
+            transition: transform 0.1s ease-in-out;
+        }
+        .drink-button:hover {
+            transform: scale(1.02);
+        }
+        .drink-button:active {
+            transform: scale(0.98);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="container p-4 sm:p-6 lg:p-8 bg-white shadow-xl rounded-2xl w-full">
+        
+        <!-- Pop-up für die Bezahlung -->
+        <div id="payment-popup" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full text-center">
+                <!-- Die Überschrift "Bestellübersicht" wurde entfernt -->
+                <p id="total-text" class="text-2xl font-bold mb-2"></p>
+                <p id="tokens-text" class="text-2xl font-bold mb-4"></p>
+                <button onclick="hidePopup()" class="px-6 py-2 bg-blue-500 text-white rounded-lg font-bold hover:bg-blue-600 transition">OK</button>
+                <p class="text-sm text-gray-500 mt-2">
+                    <span class="text-green-600 font-bold">Grün</span> = wir bekommen
+                    <br>
+                    <span class="text-red-600 font-bold">Rot</span> = wir geben
+                </p>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Getränkeauswahl -->
+            <div class="bg-gray-50 p-6 rounded-2xl shadow-inner">
+                <div class="space-y-4">
+                    <!-- Bier - Zusammengefasst nach Preis -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Biere für 4,00 € -->
+                        <button class="drink-button p-4 bg-yellow-100 rounded-xl shadow border border-yellow-200 hover:bg-yellow-200" onclick="addDrink('Halbe', 4.00, 'krug', 4.00)">
+                            <p class="font-bold text-gray-800">Halbe</p>
+                            <p class="text-sm text-gray-600">4,00 €</p>
+                        </button>
+                        <!-- Biere für 4,30 € -->
+                        <button class="drink-button p-4 bg-yellow-100 rounded-xl shadow border border-yellow-200 hover:bg-yellow-200" onclick="addDrink('Hefeweizen', 4.30, 'krug', 4.00)">
+                            <p class="font-bold text-gray-800">Hefeweizen</p>
+                            <p class="text-sm text-gray-600">4,30 €</p>
+                        </button>
+                    </div>
+                    <!-- Antialkoholische Getränke - Zusammengefasst -->
+                    <div class="grid grid-cols-1 gap-4">
+                        <button class="drink-button p-4 bg-blue-100 rounded-xl shadow border border-blue-200 hover:bg-blue-200" onclick="addDrink('Antialk', 2.50, 'flasche', 2.00)">
+                            <p class="font-bold text-gray-800">Antialk</p>
+                            <p class="text-sm text-gray-600">2,50 €</p>
+                        </button>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <!-- Pfandrückgabe-Buttons in einem Grid für gleiche Größe -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <button class="drink-button p-4 bg-green-100 rounded-xl shadow border border-green-200 hover:bg-green-200" onclick="returnPfand('krug')">
+                            <p class="font-bold text-gray-800">Krug zurück</p>
+                            <p class="text-sm text-gray-600">(4,00 €)</p>
+                        </button>
+                        <button class="drink-button p-4 bg-green-100 rounded-xl shadow border border-green-200 hover:bg-green-200" onclick="returnPfand('flasche')">
+                            <p class="font-bold text-gray-800">Flasche zurück</p>
+                            <p class="text-sm text-gray-600">(2,00 €)</p>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Warenkorb & Kasse -->
+            <div class="bg-gray-50 p-6 rounded-2xl shadow-inner flex flex-col justify-between">
+                <div>
+                    <ul id="cart-list" class="space-y-2 mb-4">
+                        <!-- Warenkorb-Elemente werden hier eingefügt -->
+                    </ul>
+                </div>
+
+                <div class="mt-auto pt-4 border-t border-gray-200">
+                    <div class="flex justify-between items-center text-lg font-semibold text-gray-800 mb-2">
+                        <span>Summe Getränke:</span>
+                        <span id="subtotal">0,00 €</span>
+                    </div>
+                    <div class="flex justify-between items-center text-lg font-semibold text-gray-800 mb-2">
+                        <span>Pfand (+/-):</span>
+                        <span id="pfand-sum">0,00 €</span>
+                    </div>
+                    <div class="flex justify-between items-center text-2xl font-bold text-gray-900 mt-2">
+                        <span>Gesamt:</span>
+                        <span id="total">0,00 €</span>
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-gray-200 rounded-xl shadow-inner text-center">
+                        <p class="text-base font-medium text-gray-700">Gesamt-Pfandmarken:</p>
+                        <span id="pfand-marken-gesamt" class="text-3xl font-bold text-gray-900">0</span>
+                    </div>
+
+                    <!-- Buttons für OK und Neu -->
+                    <div class="flex justify-center items-center mt-6">
+                        <button class="px-4 py-2 bg-red-500 text-white font-bold rounded-lg shadow-md hover:bg-red-600 transition w-full" onclick="showPaymentPopup()">
+                            <p>OK</p>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Array zum Speichern der Warenkorb-Elemente
+        let cart = [];
+        
+        // Konstanten für Pfandwerte
+        const P_KRUG = 4.00;
+        const P_FLASCHE = 2.00;
+
+        // Funktion zum Anzeigen des Pop-ups
+        function showPaymentPopup() {
+            const total = parseFloat(document.getElementById('total').innerText.replace(' €', '').replace(',', '.'));
+            const tokens = parseInt(document.getElementById('pfand-marken-gesamt').innerText, 10);
+            
+            const totalElement = document.getElementById('total-text');
+            const tokensElement = document.getElementById('tokens-text');
+
+            // Farbe für Gesamtbetrag festlegen
+            totalElement.classList.remove('text-green-600', 'text-red-600');
+            if (total > 0) {
+                // Käufer muss bezahlen (grün)
+                totalElement.classList.add('text-green-600');
+            } else if (total < 0) {
+                // Käufer bekommt Geld zurück (rot)
+                totalElement.classList.add('text-red-600');
+            }
+            totalElement.innerText = `Betrag: ${total.toFixed(2).replace('.', ',')} €`;
+
+            // Farbe für Pfandmarken festlegen
+            tokensElement.classList.remove('text-green-600', 'text-red-600');
+            if (tokens > 0) {
+                // Käufer bekommt Pfandmarken (rot)
+                tokensElement.classList.add('text-red-600');
+            } else if (tokens < 0) {
+                // Käufer gibt Pfandmarken zurück (grün)
+                tokensElement.classList.add('text-green-600');
+            }
+            tokensElement.innerText = `Pfandmarken: ${tokens}`;
+
+            document.getElementById('payment-popup').classList.remove('hidden');
+        }
+
+        // Funktion zum Verstecken des Pop-ups und Leeren des Warenkorbs
+        function hidePopup() {
+            document.getElementById('payment-popup').classList.add('hidden');
+            clearCart();
+        }
+
+        // Funktion zum Hinzufügen eines Getränks zum Warenkorb
+        function addDrink(name, price, type, pfand) {
+            cart.push({ name, price, type, pfand });
+            updateCart();
+        }
+
+        // Funktion für Pfandrückgabe
+        function returnPfand(type) {
+            if (type === 'krug') {
+                cart.push({ name: 'Pfandrückgabe Krug', price: -P_KRUG, type: 'krug', pfand: -P_KRUG });
+            } else if (type === 'flasche') {
+                cart.push({ name: 'Pfandrückgabe Flasche', price: -P_FLASCHE, type: 'flasche', pfand: -P_FLASCHE });
+            }
+            updateCart();
+        }
+
+        // Funktion zum Löschen des Warenkorbs
+        function clearCart() {
+            cart = [];
+            updateCart();
+        }
+        
+        // Funktion zum Aktualisieren des Warenkorbs und der Summen
+        function updateCart() {
+            const cartList = document.getElementById('cart-list');
+            cartList.innerHTML = '';
+            
+            let subtotal = 0;
+            let pfandSum = 0;
+            let pfandMarken = 0;
+
+            // Zähle gleiche Artikel zusammen
+            const groupedItems = {};
+            cart.forEach(item => {
+                const key = `${item.name}-${item.price}`;
+                if (!groupedItems[key]) {
+                    groupedItems[key] = { ...item, count: 0, totalPfand: 0 };
+                }
+                groupedItems[key].count++;
+                groupedItems[key].totalPfand += item.pfand;
+                
+                subtotal += item.price;
+                if (item.pfand) {
+                    pfandSum += item.pfand;
+                }
+                
+                // Pfandmarken zählen
+                if (item.pfand > 0) {
+                    pfandMarken++;
+                } else if (item.pfand < 0) {
+                    pfandMarken--;
+                }
+            });
+
+            // Erstelle die Anzeige für die gruppierten Artikel
+            for (const key in groupedItems) {
+                const item = groupedItems[key];
+                const li = document.createElement('li');
+                li.classList.add('flex', 'justify-between', 'items-center', 'text-gray-700', 'text-sm');
+                
+                const itemName = item.count > 1 ? `${item.name} (x${item.count})` : item.name;
+                const totalItemPrice = (item.price * item.count) + item.totalPfand;
+                
+                li.innerHTML = `
+                    <span>${itemName}</span>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-medium">${totalItemPrice.toFixed(2).replace('.', ',')} €</span>
+                        <button class="text-red-500 hover:text-red-700 font-bold text-lg" onclick="removeItem('${item.name}')">×</button>
+                    </div>
+                `;
+                cartList.appendChild(li);
+            }
+            
+            // Gesamtbetrag berechnen
+            const total = subtotal + pfandSum;
+
+            // HTML-Elemente aktualisieren
+            document.getElementById('subtotal').innerText = `${subtotal.toFixed(2).replace('.', ',')} €`;
+            document.getElementById('pfand-sum').innerText = `${pfandSum.toFixed(2).replace('.', ',')} €`;
+            document.getElementById('total').innerText = `${total.toFixed(2).replace('.', ',')} €`;
+            document.getElementById('pfand-marken-gesamt').innerText = pfandMarken;
+        }
+
+        // Funktion zum Entfernen eines bestimmten Elements
+        function removeItem(name) {
+             const index = cart.findIndex(item => item.name === name);
+             if (index > -1) {
+                cart.splice(index, 1);
+                updateCart();
+             }
+        }
+    </script>
+</body>
+</html>
