@@ -246,26 +246,26 @@
 
         // Funktion zum Entfernen eines bestimmten Elements
         function removeItem(name) {
-             let itemsToRemove = [];
-             
-             // Füge das Hauptgetränk und das dazugehörige Pfand zur Löschliste hinzu
-             if (name === 'Halbe') {
-                 itemsToRemove.push(...cart.filter(item => item.name === 'Halbe' || item.name === 'Pfand Krug'));
-             } else if (name === 'Weizen') {
-                 itemsToRemove.push(...cart.filter(item => item.name === 'Weizen' || item.name === 'Pfand Krug'));
-             } else if (name === 'Antialk') {
-                 itemsToRemove.push(...cart.filter(item => item.name === 'Antialk' || item.name === 'Pfand Flasche'));
-             } else if (name.includes('zurück')) {
-                 itemsToRemove.push(...cart.filter(item => item.name === name));
-             }
-
-             itemsToRemove.forEach(itemToRemove => {
-                 const index = cart.indexOf(itemToRemove);
+             // Behandlung der Rückgabe-Items
+             if (name === 'Krug zurück' || name === 'Flasche zurück') {
+                 const index = cart.findIndex(item => item.name === name);
                  if (index > -1) {
                      cart.splice(index, 1);
                  }
-             });
+             } else {
+                 // Behandlung der Hauptgetränke und ihrer Pfand-Positionen
+                 const drinkIndex = cart.findIndex(item => item.name === name && item.isMain);
+                 if (drinkIndex > -1) {
+                     const drinkType = cart[drinkIndex].type;
+                     cart.splice(drinkIndex, 1); // Entfernt das Hauptgetränk
 
+                     const pfandName = (drinkType === 'krug') ? 'Pfand Krug' : 'Pfand Flasche';
+                     const pfandIndex = cart.findIndex(item => item.name === pfandName);
+                     if (pfandIndex > -1) {
+                         cart.splice(pfandIndex, 1); // Entfernt eine einzelne Pfandposition
+                     }
+                 }
+             }
              updateCart();
         }
     </script>
